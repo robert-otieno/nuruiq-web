@@ -22,7 +22,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", sans-serif;
 }
 
 /* Template helpers inspired by Tailwind Pocket */
@@ -36,4 +36,17 @@ body {
 .mask-radial {
   -webkit-mask-image: radial-gradient(70% 60% at 50% 0%, #000 60%, transparent 100%);
   mask-image: radial-gradient(70% 60% at 50% 0%, #000 60%, transparent 100%);
+}
+
+/* Brand mark responsive helpers */
+.brand-mark {
+  width: clamp(20px, 2.6vw, 28px);
+  height: auto;
+  display: block;
+}
+
+.brand-mark-hero {
+  width: clamp(36px, 6.5vw, 64px);
+  height: auto;
+  display: block;
 }

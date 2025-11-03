@@ -39,7 +39,8 @@ export default async function Home() {
       <header className="sticky top-0 z-10 bg-white/60 backdrop-blur supports-backdrop-filter:bg-white/60 dark:bg-black/40">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <a href="#" className="flex items-center gap-2">
-            <span className="text-xl font-semibold tracking-tight">Nuruiq</span>
+            <img src="/logo.svg" alt="NuruIQ logo" className="brand-mark" />
+            <span className="text-xl font-semibold tracking-tight">NuruIQ</span>
           </a>
           <nav className="hidden gap-6 text-sm text-zinc-600 dark:text-zinc-300 sm:flex">
             <a href="#features" className="hover:text-zinc-900 dark:hover:text-white">
@@ -77,6 +78,9 @@ export default async function Home() {
         </div>
         <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 py-20 md:grid-cols-2 md:py-28">
           <div>
+            <div className="mb-3">
+              <img src="/logo.svg" alt="NuruIQ logo" className="brand-mark-hero drop-shadow-sm" />
+            </div>
             <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">NuruIQ. Never Miss a Power Update.</h1>
             <p className="mt-5 max-w-xl text-lg text-zinc-600 dark:text-zinc-400">Real-time KPLC outages, updates and smart notifications — all in one lightweight app.</p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -339,7 +343,7 @@ export default async function Home() {
       {/* Footer */}
       <footer className="border-t border-zinc-200 py-10 text-sm text-zinc-500 dark:border-zinc-800">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6">
-          <div>© {new Date().getFullYear()} Nuruiq. All rights reserved.</div>
+          <div>© {new Date().getFullYear()} NuruIQ. All rights reserved.</div>
           <div className="flex gap-5">
             <Link href="/privacy" className="hover:text-zinc-700 dark:hover:text-zinc-300">
               Privacy
