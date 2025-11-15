@@ -96,11 +96,11 @@ export default async function Home() {
             </div>
             <div className="mt-6 text-xs text-zinc-500 dark:text-zinc-400">Android only for now. iOS coming soon.</div>
           </div>
-          <div className="relative mx-auto w-full max-w-md">
+          <div className="relative mx-auto">
             <div className="pointer-events-none absolute inset-0 -z-10 rounded-[28px] bg-white/60 shadow-2xl ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-950/60 dark:ring-white/10" />
             <div className="rounded-[28px] bg-white p-4 shadow-xl ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-950 dark:ring-white/10">
               <div className="overflow-hidden rounded-[22px] ring-1 ring-inset ring-zinc-900/10 dark:ring-white/10">
-                <Image src="/screens/screen-1.svg" alt="App screen" width={600} height={1200} priority />
+                <Image src="/screens/screen-0.jpg" alt="App screen" width={300} height={600} priority />
               </div>
             </div>
           </div>
@@ -154,12 +154,13 @@ export default async function Home() {
                 <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
                   {upcoming.map((evt) => (
                     <li key={evt.id} className="py-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <div className="text-sm font-medium">{formatLocation(evt) || evt.area || "Unknown area"}</div>
-                          <div className="text-xs text-zinc-600 dark:text-zinc-400">{formatWindow(evt)}</div>
-                        </div>
-                        <span className="inline-flex shrink-0 items-center rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20 dark:text-sky-400">Upcoming</span>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-sm font-medium">{formatLocation(evt) || evt.area || "Unknown area"}</div>
+                            <div className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{evt.date_local}</div>
+                            <div className="text-xs text-zinc-600 dark:text-zinc-400">{formatWindow(evt)}</div>
+                          </div>
+                          <span className="inline-flex shrink-0 items-center rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20 dark:text-sky-400">Upcoming</span>
                       </div>
                     </li>
                   ))}
@@ -217,7 +218,7 @@ export default async function Home() {
           </div>
           <div className="overflow-x-auto">
             <div className="flex gap-6">
-              {["/screens/screen-1.svg", "/screens/screen-2.svg", "/screens/screen-3.svg", "/screens/screen-4.svg"].map((src) => (
+              {["/screens/screen-1.jpg", "/screens/screen-2.jpg", "/screens/screen-3.jpg", "/screens/screen-4.jpg"].map((src) => (
                 <div key={src} className="relative w-[260px] shrink-0">
                   <div className="rounded-[22px] bg-white p-2 shadow-md ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-950 dark:ring-white/10">
                     <div className="overflow-hidden rounded-[18px] ring-1 ring-inset ring-zinc-900/10 dark:ring-white/10">
