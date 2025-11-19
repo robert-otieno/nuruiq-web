@@ -13,9 +13,24 @@ function formatWindow(evt: EventItemDto): string {
   if (evt.window_text) return evt.window_text;
   const hasStart = Boolean(evt.start_local);
   const hasEnd = Boolean(evt.end_local);
-  if (hasStart && hasEnd) return `${evt.start_local} – ${evt.end_local}`;
+  if (hasStart && hasEnd) return `${evt.start_local} - ${evt.end_local}`;
   if (hasStart) return `${evt.start_local}`;
   return evt.date_local;
+}
+
+function parseEventDate(dateStr?: string | null): Date | null {
+  if (!dateStr) return null;
+  const trimmed = dateStr.trim();
+  if (!trimmed) return null;
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    const isoDate = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(isoDate.getTime()) ? null : isoDate;
+  }
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
 }
 
 export default async function Home() {
@@ -24,12 +39,21 @@ export default async function Home() {
   try {
     const [nowRes, futureRes] = await Promise.all([fetchEventsNow({ limit: 20 }), fetchEvents({ limit: 30, sort: "asc" })]);
     const seen = new Set<string>();
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     active = nowRes.items.filter((it) => {
       if (seen.has(it.id)) return false;
       seen.add(it.id);
       return true;
     });
-    upcoming = futureRes.items.filter((it) => !seen.has(it.id)).slice(0, 20);
+    upcoming = futureRes.items
+      .filter((it) => !seen.has(it.id))
+      .filter((it) => {
+        const eventDate = parseEventDate(it.date_local);
+        if (!eventDate) return false;
+        return eventDate.getTime() > startOfToday.getTime();
+      })
+      .slice(0, 20);
   } catch {
     // Non-blocking; section will show an error state
   }
@@ -121,10 +145,19 @@ export default async function Home() {
           </div>
           <div className="grid gap-6 md:grid-cols-2">
             <div className="rounded-2xl bg-white/70 p-6 shadow-sm ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-900/40 dark:ring-white/10">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Active now</h3>
-                <span className="text-xs text-emerald-700 dark:text-emerald-400">auto-updating</span>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/15 ring-1 ring-emerald-500/40">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-zinc-50">Active now</h3>
+                    <p className="text-xs text-zinc-400">Outages currently in progress.</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-400">auto-updating</span>
               </div>
+
               {active.length === 0 ? (
                 <div className="text-sm text-zinc-600 dark:text-zinc-400">No active outages detected.</div>
               ) : (
@@ -144,23 +177,32 @@ export default async function Home() {
               )}
             </div>
             <div className="rounded-2xl bg-white/70 p-6 shadow-sm ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-900/40 dark:ring-white/10">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Upcoming</h3>
-                <span className="text-xs text-zinc-600 dark:text-zinc-400">ordered by start time</span>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-500/10 ring-1 ring-sky-500/40 animate-pulse">
+                    <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-zinc-50">Upcoming</h3>
+                    <p className="text-xs text-zinc-400">Scheduled outages for the next few days.</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">ordered by start time</span>
               </div>
+
               {upcoming.length === 0 ? (
                 <div className="text-sm text-zinc-600 dark:text-zinc-400">No scheduled outages found.</div>
               ) : (
                 <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
                   {upcoming.map((evt) => (
                     <li key={evt.id} className="py-3">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <div className="text-sm font-medium">{formatLocation(evt) || evt.area || "Unknown area"}</div>
-                            <div className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{evt.date_local}</div>
-                            <div className="text-xs text-zinc-600 dark:text-zinc-400">{formatWindow(evt)}</div>
-                          </div>
-                          <span className="inline-flex shrink-0 items-center rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20 dark:text-sky-400">Upcoming</span>
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="text-sm font-medium">{formatLocation(evt) || evt.area || "Unknown area"}</div>
+                          <div className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{evt.date_local}</div>
+                          <div className="text-xs text-zinc-600 dark:text-zinc-400">{formatWindow(evt)}</div>
+                        </div>
+                        <span className="inline-flex shrink-0 items-center rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20 dark:text-sky-400">Upcoming</span>
                       </div>
                     </li>
                   ))}
