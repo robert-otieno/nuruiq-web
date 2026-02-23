@@ -373,12 +373,12 @@ export default async function Home() {
               </div>
               <div className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">Checksum and version details will appear here once available.</div>
             </div>
-            <div className="mx-auto w-full max-w-xs">
+            {/* <div className="mx-auto w-full max-w-xs">
               <div className="rounded-2xl p-6 text-center shadow-sm ring-1 ring-inset ring-zinc-900/10 dark:ring-white/10">
                 <Image src="/qr.svg" alt="QR code placeholder" width={180} height={180} className="mx-auto" />
                 <div className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">Scan on your phone</div>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </section>

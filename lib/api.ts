@@ -61,8 +61,7 @@ async function request<T>(path: string, opts: { query?: Record<string, any>; ini
   const res = await fetch(url, {
     ...(opts.init ?? {}),
     headers: { Accept: "application/json", ...(opts.init?.headers ?? {}) },
-    // Next edge/runtime fetch options can be provided here if needed
-    cache: "no-store",
+    next: { revalidate: 60 },
   });
   if (!res.ok) {
     const text = await res.text();
@@ -80,4 +79,3 @@ export async function fetchEvents(params: ListEventsParams = {}): Promise<EventL
 export async function fetchEventsNow(params: EventsNowParams = {}): Promise<EventListResponseDto> {
   return request<EventListResponseDto>("/v1/events/now", { query: params });
 }
-
