@@ -3,6 +3,13 @@ import { fetchEvents, fetchEventsNow, type EventItemDto } from "../lib/api";
 import Link from "next/link";
 
 export const revalidate = 60;
+type PageSearchParams = Record<string, string | string[] | undefined>;
+
+interface AlertCardItem {
+  event: EventItemDto;
+  isActive: boolean;
+  region: string;
+}
 
 function formatLocation(evt: EventItemDto): string {
   const parts = [evt.area, evt.county, evt.region].filter(Boolean) as string[];
@@ -33,7 +40,37 @@ function parseEventDate(dateStr?: string | null): Date | null {
   return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
 }
 
-export default async function Home() {
+function getRegionLabel(evt: EventItemDto): string {
+  const region = evt.region?.trim();
+  if (region) return region;
+  const county = evt.county?.trim();
+  if (county) return county;
+  return "Other regions";
+}
+
+function formatPlaces(evt: EventItemDto): string {
+  if (evt.places?.length) {
+    return evt.places.filter(Boolean).join(", ");
+  }
+  return "Not specified";
+}
+
+async function resolveSearchParams(
+  searchParams?: PageSearchParams | Promise<PageSearchParams>,
+): Promise<PageSearchParams> {
+  if (!searchParams) return {};
+  return Promise.resolve(searchParams);
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: PageSearchParams | Promise<PageSearchParams>;
+}) {
+  const resolvedSearchParams = await resolveSearchParams(searchParams);
+  const rawRegion = resolvedSearchParams.region;
+  const selectedRegion = (Array.isArray(rawRegion) ? rawRegion[0] : rawRegion)?.trim() || "";
+
   let active: EventItemDto[] = [];
   let upcoming: EventItemDto[] = [];
   try {
@@ -57,6 +94,32 @@ export default async function Home() {
   } catch {
     // Non-blocking; section will show an error state
   }
+  const cards: AlertCardItem[] = [
+    ...active.map((event) => ({ event, isActive: true, region: getRegionLabel(event) })),
+    ...upcoming.map((event) => ({ event, isActive: false, region: getRegionLabel(event) })),
+  ];
+  const regionSummaries = Array.from(
+    cards.reduce((acc, item) => {
+      const existing = acc.get(item.region);
+      if (existing) {
+        existing.total += 1;
+        if (item.isActive) existing.active += 1;
+      } else {
+        acc.set(item.region, { name: item.region, total: 1, active: item.isActive ? 1 : 0 });
+      }
+      return acc;
+    }, new Map<string, { name: string; total: number; active: number }>()),
+  )
+    .map(([, summary]) => summary)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const regionExists = selectedRegion ? regionSummaries.some((region) => region.name === selectedRegion) : true;
+  const activeRegion = regionExists ? selectedRegion : "";
+  const visibleCards = cards.filter((item) => !activeRegion || item.region === activeRegion);
+
+  const allRegionsTotal = cards.length;
+  const allRegionsActive = cards.filter((item) => item.isActive).length;
+
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 antialiased dark:bg-black dark:text-zinc-50">
       {/* Header */}
@@ -105,8 +168,8 @@ export default async function Home() {
             <div className="mb-3">
               <img src="/logo.svg" alt="NuruIQ logo" className="brand-mark-hero drop-shadow-sm" />
             </div>
-            <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">NuruIQ. Never Miss a Power Update.</h1>
-            <p className="mt-5 max-w-xl text-lg text-zinc-600 dark:text-zinc-400">Real-time KPLC outages, updates and smart notifications — all in one lightweight app.</p>
+            <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">NuruIQ. <br />  Never Miss a Power Update.</h1>
+            <p className="mt-5 max-w-xl text-lg text-zinc-600 dark:text-zinc-400">Real-time KPLC outages, updates and smart notifications - all in one lightweight app.</p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <a href="#download" className="rounded-full bg-linear-to-tr from-emerald-500 to-teal-400 px-5 py-3 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-emerald-600/20 transition hover:brightness-110">
                 Download APK
@@ -122,9 +185,9 @@ export default async function Home() {
           </div>
           <div className="relative mx-auto">
             <div className="pointer-events-none absolute inset-0 -z-10 rounded-[28px] bg-white/60 shadow-2xl ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-950/60 dark:ring-white/10" />
-            <div className="rounded-[28px] bg-white p-4 shadow-xl ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-950 dark:ring-white/10">
-              <div className="overflow-hidden rounded-[22px] ring-1 ring-inset ring-zinc-900/10 dark:ring-white/10">
-                <Image src="/screens/screen-0.jpg" alt="App screen" width={300} height={600} priority />
+            <div className="rounded-[28px] bg-white p-2 shadow-xl ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-950 dark:ring-white/10">
+              <div className="h-[450px] overflow-hidden rounded-[22px] ring-1 ring-inset ring-zinc-900/10 dark:ring-white/10">
+                <Image src="/screens/screen-0.jpg" alt="App screen" width={300} height={400} className="h-full w-auto" priority />
               </div>
             </div>
           </div>
@@ -137,89 +200,113 @@ export default async function Home() {
           <div className="absolute inset-0 bg-grid opacity-30 dark:opacity-15" />
         </div>
         <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-8 flex items-end justify-between">
+          <div className="mb-8">
             <div>
               <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Live Alerts</h2>
-              <p className="mt-2 max-w-2xl text-zinc-600 dark:text-zinc-400">Planned outages — active now and scheduled next.</p>
+              <p className="mt-2 max-w-2xl text-zinc-600 dark:text-zinc-400">Planned outages by region. Select a category to view outage cards.</p>
             </div>
           </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-2xl bg-white/70 p-6 shadow-sm ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-900/40 dark:ring-white/10">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/15 ring-1 ring-emerald-500/40">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-zinc-50">Active now</h3>
-                    <p className="text-xs text-zinc-400">Outages currently in progress.</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-400">auto-updating</span>
-              </div>
 
-              {active.length === 0 ? (
-                <div className="text-sm text-zinc-600 dark:text-zinc-400">No active outages detected.</div>
-              ) : (
-                <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                  {active.map((evt) => (
-                    <li key={evt.id} className="py-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <div className="text-sm font-medium">{formatLocation(evt) || evt.area || "Unknown area"}</div>
-                          <div className="text-xs text-zinc-600 dark:text-zinc-400">{formatWindow(evt)}</div>
-                        </div>
-                        <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:text-emerald-400">Active</span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="rounded-2xl bg-white/70 p-6 shadow-sm ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-900/40 dark:ring-white/10">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-500/10 ring-1 ring-sky-500/40 animate-pulse">
-                    <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-zinc-50">Upcoming</h3>
-                    <p className="text-xs text-zinc-400">Scheduled outages for the next few days.</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">ordered by start time</span>
-              </div>
-
-              {upcoming.length === 0 ? (
-                <div className="text-sm text-zinc-600 dark:text-zinc-400">No scheduled outages found.</div>
-              ) : (
-                <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                  {upcoming.map((evt) => (
-                    <li key={evt.id} className="py-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <div className="text-sm font-medium">{formatLocation(evt) || evt.area || "Unknown area"}</div>
-                          <div className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{evt.date_local}</div>
-                          <div className="text-xs text-zinc-600 dark:text-zinc-400">{formatWindow(evt)}</div>
-                        </div>
-                        <span className="inline-flex shrink-0 items-center rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-600/20 dark:text-sky-400">Upcoming</span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+          <div className="mb-6 rounded-2xl bg-white/70 p-4 shadow-sm ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-900/40 dark:ring-white/10">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Regions</div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/#alerts"
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  !activeRegion
+                    ? "bg-emerald-500 text-white shadow-sm ring-1 ring-inset ring-emerald-600/40"
+                    : "bg-zinc-100 text-zinc-700 ring-1 ring-inset ring-zinc-300 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700 dark:hover:bg-zinc-700"
+                }`}
+              >
+                <span>All regions</span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] ${!activeRegion ? "bg-white/20" : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200"}`}>{allRegionsTotal}</span>
+                {allRegionsActive > 0 && (
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] ${!activeRegion ? "bg-red-500/40" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}`}>{allRegionsActive} active</span>
+                )}
+              </Link>
+              {regionSummaries.map((region) => {
+                const isSelected = activeRegion === region.name;
+                return (
+                  <Link
+                    key={region.name}
+                    href={`/?region=${encodeURIComponent(region.name)}#alerts`}
+                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                      isSelected
+                        ? "bg-emerald-500 text-white shadow-sm ring-1 ring-inset ring-emerald-600/40"
+                        : "bg-zinc-100 text-zinc-700 ring-1 ring-inset ring-zinc-300 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700 dark:hover:bg-zinc-700"
+                    }`}
+                  >
+                    <span>{region.name}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] ${isSelected ? "bg-white/20" : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200"}`}>{region.total}</span>
+                    {region.active > 0 && (
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] ${isSelected ? "bg-red-500/40" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}`}>
+                        {region.active} active
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </div>
+
+          {visibleCards.length === 0 ? (
+            <div className="rounded-2xl bg-white/70 p-6 text-sm text-zinc-600 shadow-sm ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-900/40 dark:text-zinc-400 dark:ring-white/10">
+              No outages found for this region.
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {visibleCards.map((item) => {
+                const evt = item.event;
+                return (
+                  <article
+                    key={`${evt.id}-${item.isActive ? "active" : "upcoming"}`}
+                    className={`overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-inset dark:bg-zinc-900/40 ${
+                      item.isActive ? "ring-red-300 dark:ring-red-700/60" : "ring-zinc-900/5 dark:ring-white/10"
+                    }`}
+                  >
+                    <div className={`flex items-center justify-between gap-3 px-4 py-3 ${item.isActive ? "bg-red-600 text-white" : "bg-sky-500/15 text-sky-900 dark:bg-sky-500/20 dark:text-sky-200"}`}>
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-semibold">{evt.area?.trim() || formatLocation(evt) || "Unknown area"}</h3>
+                        <p className={`truncate text-xs ${item.isActive ? "text-red-100" : "text-sky-800 dark:text-sky-300"}`}>{item.region}</p>
+                      </div>
+                      {item.isActive ? (
+                        <span className="inline-flex shrink-0 items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ring-white/30">
+                          Active outage
+                        </span>
+                      ) : (
+                        <span className="inline-flex shrink-0 items-center rounded-full bg-white/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800 ring-1 ring-inset ring-sky-600/20 dark:bg-sky-900/40 dark:text-sky-200 dark:ring-sky-400/30">
+                          Upcoming
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-3 px-4 py-4 text-sm">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Date</p>
+                        <p className="mt-1 text-zinc-800 dark:text-zinc-100">{evt.date_local || "Not provided"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Time</p>
+                        <p className="mt-1 text-zinc-800 dark:text-zinc-100">{formatWindow(evt)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Places</p>
+                        <p className="mt-1 text-zinc-700 dark:text-zinc-300">{formatPlaces(evt)}</p>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
           <div className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">Feed includes official planned notices; user reports appear in-app.</div>
         </div>
       </section>
-
       {/* Features */}
       <section id="features" className="border-y border-zinc-200 bg-white py-16 dark:border-zinc-800 dark:bg-black sm:py-20">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-10 max-w-2xl">
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Features that matter</h2>
-            <p className="mt-3 text-zinc-600 dark:text-zinc-400">Built to be reliable, simple, and fast — so you always know what’s happening.</p>
+            <p className="mt-3 text-zinc-600 dark:text-zinc-400">Built to be reliable, simple, and fast - so you always know what&apos;s happening.</p>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[
@@ -357,7 +444,7 @@ export default async function Home() {
           <div className="grid items-center gap-10 md:grid-cols-[1.2fr_0.8fr]">
             <div>
               <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Download the APK</h2>
-              <p className="mt-3 max-w-xl text-zinc-600 dark:text-zinc-400">Ready to try it? Install the Android APK directly. We’ll publish to the Play Store soon.</p>
+              <p className="mt-3 max-w-xl text-zinc-600 dark:text-zinc-400">Ready to try it? Install the Android APK directly. We&apos;ll publish to the Play Store soon.</p>
               <div className="mt-6 flex flex-wrap items-center gap-4">
                 <a
                   href="#"
@@ -386,7 +473,7 @@ export default async function Home() {
       {/* Footer */}
       <footer className="border-t border-zinc-200 py-10 text-sm text-zinc-500 dark:border-zinc-800">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6">
-          <div>© {new Date().getFullYear()} NuruIQ. All rights reserved.</div>
+          <div>(c) {new Date().getFullYear()} NuruIQ. All rights reserved.</div>
           <div className="flex gap-5">
             <Link href="/privacy" className="hover:text-zinc-700 dark:hover:text-zinc-300">
               Privacy

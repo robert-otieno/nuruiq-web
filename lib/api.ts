@@ -42,11 +42,17 @@ export interface EventsNowParams extends Record<string, string | number | boolea
   limit?: number;
 }
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https://blackout-watch-api-latest.onrender.com").replace(/\/$/, "");
+const API_BASE = (
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://blackout-watch-api-latest.onrender.com"
+  // "http://127.0.0.1:8080"
+).replace(/\/$/, "");
+
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || process.env.API_KEY || "";
 
 function buildUrl(path: string, query?: Record<string, string | number | boolean | undefined | null>): string {
   const normalizedPath = path.replace(/^\/+/, "");
-  const url = new URL(normalizedPath, `${API_BASE}`);
+  const url = new URL(normalizedPath, `${API_BASE}/`);
   if (query) {
     for (const [k, v] of Object.entries(query)) {
       if (v === undefined || v === null) continue;
@@ -56,17 +62,30 @@ function buildUrl(path: string, query?: Record<string, string | number | boolean
   return url.toString();
 }
 
+function normalizeHeaders(headers?: HeadersInit): Headers {
+  const out = new Headers(headers || {});
+  if (!out.has("Accept")) {
+    out.set("Accept", "application/json");
+  }
+  if (API_KEY && !out.has("X-API-Key")) {
+    out.set("X-API-Key", API_KEY);
+  }
+  return out;
+}
+
 async function request<T>(path: string, opts: { query?: Record<string, any>; init?: RequestInit } = {}): Promise<T> {
   const url = buildUrl(path, opts.query);
   const res = await fetch(url, {
     ...(opts.init ?? {}),
-    headers: { Accept: "application/json", ...(opts.init?.headers ?? {}) },
+    headers: normalizeHeaders(opts.init?.headers),
     next: { revalidate: 60 },
   });
+
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`API ${res.status}: ${text || res.statusText}`);
   }
+
   return (await res.json()) as T;
 }
 
