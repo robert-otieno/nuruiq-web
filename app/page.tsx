@@ -133,6 +133,22 @@ const faqItems = [
   },
 ] as const;
 
+const hero = {
+  title: "Planned Outage Alerts, ",
+  subtitle: "Organized by Region.",
+  description: "NuruIQ gives you area-level outage visibility with clear schedules, active status, and places affected.",
+  buttons: [
+    { label: "Download APK", href: "https://play.google.com/store/apps/details?id=com.power_watch.nuruiq&pcampaignid=web_share", variant: "default" },
+    { label: "See Live Alerts", href: "#alerts", variant: "outline" },
+  ],
+  image: {
+    src: "/screens/screen-0.jpg",
+    alt: "NuruIQ app home screen",
+    width: 571,
+    height: 1280,
+  },
+};
+
 export default async function Home({ searchParams }: { searchParams?: PageSearchParams | Promise<PageSearchParams> }) {
   const resolvedSearchParams = await resolveSearchParams(searchParams);
   const rawRegion = resolvedSearchParams.region;
@@ -230,32 +246,41 @@ export default async function Home({ searchParams }: { searchParams?: PageSearch
             <div className="absolute -bottom-24 right-0 h-72 w-72 rounded-full bg-sky-500/20 blur-3xl" />
           </div>
 
-          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-[1.05fr_0.95fr] md:py-24">
-            <div className="space-y-6">
+          <div className="mx-auto max-w-7xl container flex flex-col items-center gap-10 px-4 py-16 sm:px-6 md:py-24 lg:my-0 lg:flex-row">
+            <div className="flex flex-col gap-7 lg:w-2/3 space-y-6">
               <div className="mb-3">
                 <img src="/logo.svg" alt="NuruIQ logo" className="brand-mark-hero drop-shadow-sm" />
               </div>
-              <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">Planned Outage Alerts, Organized by Region.</h1>
-              <p className="max-w-2xl text-base text-muted-foreground sm:text-lg">NuruIQ gives you area-level outage visibility with clear schedules, active status, and places affected.</p>
+
+              <h1 className="text-5xl lg:text-7xl font-semibold text-foreground leading-tight tracking-tight sm:text-5xl">
+                <span>{hero.title}</span>
+                <span className="text-emerald-600">{hero.subtitle}</span>
+              </h1>
+
+              <p className="max-w-2xl text-base text-muted-foreground sm:text-lg">{hero.description}</p>
+
               <div className="flex flex-wrap items-center gap-3">
                 <Button asChild size="lg">
-                  <a href="https://play.google.com/store/apps/details?id=com.power_watch.nuruiq&pcampaignid=web_share" target="_blank" rel="noopener noreferrer">
-                    Download APK
+                  <a href={hero.buttons[0].href} target="_blank" rel="noopener noreferrer">
+                    {hero.buttons[0].label}
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </a>
                 </Button>
+
                 <Button asChild variant="outline" size="lg">
-                  <Link href="#alerts">See Live Alerts</Link>
+                  <Link href={hero.buttons[1].href}>{hero.buttons[1].label}</Link>
                 </Button>
               </div>
+
               <p className="text-xs text-muted-foreground">Android available now. iOS support is coming soon.</p>
             </div>
-
-            <Card className="overflow-hidden p-2">
-              <div className="overflow-hidden rounded-lg border bg-card">
-                <Image src="/screens/screen-0.jpg" alt="NuruIQ app home screen" width={720} height={1100} className="h-[500px] w-full object-cover object-top" priority />
+            <div className="relative z-10 w-full max-w-[380px]">
+              <div className="absolute left-1/2 top-[1.1%] h-[93.4%] w-[76.4%] -translate-x-1/2 overflow-hidden rounded-[3rem]">
+                <Image src={hero.image.src} alt={hero.image.alt} fill className="object-cover object-top" sizes="(max-width: 768px) 80vw, 380px" />
               </div>
-            </Card>
+
+              <Image src="/screens/phone-2.png" alt="Phone frame" width={1227} height={2048} className="relative z-10 h-auto w-full" />
+            </div>
           </div>
         </section>
 
@@ -332,7 +357,10 @@ export default async function Home({ searchParams }: { searchParams?: PageSearch
               {visibleCards.map((item) => {
                 const evt = item.event;
                 return (
-                  <Card key={evt.id} className={`overflow-hidden gap-0 rounded-2xl bg-white shadow-sm ring-1 ring-inset dark:bg-zinc-900/40 ${item.isActive ? "ring-red-300 dark:ring-red-700/60 shadow-red-300 dark:shadow-red-700/60" : "ring-zinc-900/5 dark:ring-white/10"}`}>
+                  <Card
+                    key={evt.id}
+                    className={`overflow-hidden gap-0 rounded-2xl bg-white shadow-sm ring-1 ring-inset dark:bg-zinc-900/40 ${item.isActive ? "ring-red-300 dark:ring-red-700/60 shadow-red-300 dark:shadow-red-700/60" : "ring-zinc-900/5 dark:ring-white/10"}`}
+                  >
                     <div className={item.isActive ? "flex items-center justify-between gap-3 border-b bg-destructive px-5 py-3 text-destructive-foreground" : "flex items-center justify-between gap-3 border-b bg-secondary px-5 py-3"}>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold">{evt.area?.trim() || formatLocation(evt) || "Unknown area"}</p>
@@ -468,7 +496,7 @@ export default async function Home({ searchParams }: { searchParams?: PageSearch
         <Separator />
 
         <section id="download" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16">
-          <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 to-background">
+          <Card className="overflow-hidden border-primary/20 bg-linear-to-br from-primary/10 to-background">
             <CardHeader>
               <CardTitle className="text-2xl">Download NuruIQ for Android</CardTitle>
               <CardDescription>Install the APK and start receiving outage alerts organized by the regions you care about.</CardDescription>
