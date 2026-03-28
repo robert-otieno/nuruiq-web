@@ -49,8 +49,9 @@ const API_BASE = (
 ).replace(/\/$/, "");
 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || process.env.API_KEY || "";
+type QueryValue = string | number | boolean | undefined | null;
 
-function buildUrl(path: string, query?: Record<string, string | number | boolean | undefined | null>): string {
+function buildUrl(path: string, query?: Record<string, QueryValue>): string {
   const normalizedPath = path.replace(/^\/+/, "");
   const url = new URL(normalizedPath, `${API_BASE}/`);
   if (query) {
@@ -73,7 +74,7 @@ function normalizeHeaders(headers?: HeadersInit): Headers {
   return out;
 }
 
-async function request<T>(path: string, opts: { query?: Record<string, any>; init?: RequestInit } = {}): Promise<T> {
+async function request<T>(path: string, opts: { query?: Record<string, QueryValue>; init?: RequestInit } = {}): Promise<T> {
   const url = buildUrl(path, opts.query);
   const res = await fetch(url, {
     ...(opts.init ?? {}),

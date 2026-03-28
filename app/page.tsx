@@ -1,8 +1,17 @@
 import Image from "next/image";
-import { fetchEvents, fetchEventsNow, type EventItemDto } from "../lib/api";
 import Link from "next/link";
+import { Bell, CalendarDays, ChevronRight, Clock3, Download, MapPin, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
+
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { fetchEvents, fetchEventsNow, type EventItemDto } from "../lib/api";
 
 export const revalidate = 60;
+
 type PageSearchParams = Record<string, string | string[] | undefined>;
 
 interface AlertCardItem {
@@ -22,7 +31,8 @@ function formatWindow(evt: EventItemDto): string {
   const hasEnd = Boolean(evt.end_local);
   if (hasStart && hasEnd) return `${evt.start_local} - ${evt.end_local}`;
   if (hasStart) return `${evt.start_local}`;
-  return evt.date_local;
+  if (hasEnd) return `${evt.end_local}`;
+  return "Not provided";
 }
 
 function parseEventDate(dateStr?: string | null): Date | null {
@@ -55,34 +65,95 @@ function formatPlaces(evt: EventItemDto): string {
   return "Not specified";
 }
 
-async function resolveSearchParams(
-  searchParams?: PageSearchParams | Promise<PageSearchParams>,
-): Promise<PageSearchParams> {
+async function resolveSearchParams(searchParams?: PageSearchParams | Promise<PageSearchParams>): Promise<PageSearchParams> {
   if (!searchParams) return {};
   return Promise.resolve(searchParams);
 }
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams?: PageSearchParams | Promise<PageSearchParams>;
-}) {
+const featureItems = [
+  {
+    title: "Realtime alerts",
+    description: "Get notified about outages and restorations as they happen.",
+    icon: Bell,
+  },
+  {
+    title: "Regional coverage",
+    description: "Track regions that matter to you with structured, location-first feeds.",
+    icon: MapPin,
+  },
+  {
+    title: "Reliable summaries",
+    description: "See what changed today without scrolling through every notice.",
+    icon: Sparkles,
+  },
+  {
+    title: "Privacy first",
+    description: "Your data remains yours. No hidden sharing.",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Android ready",
+    description: "Lightweight APK delivery for quick installs.",
+    icon: Smartphone,
+  },
+  {
+    title: "Fast updates",
+    description: "Live feed refreshes continuously with official planned notices.",
+    icon: Download,
+  },
+] as const;
+
+const workflow = [
+  { step: "1", title: "Install", description: "Download and install the Android APK." },
+  { step: "2", title: "Choose regions", description: "Pick regions and areas to watch." },
+  { step: "3", title: "Receive alerts", description: "Get outage and restoration updates." },
+  { step: "4", title: "Stay in control", description: "Change preferences anytime." },
+] as const;
+
+const faqItems = [
+  {
+    q: "What is NuruIQ?",
+    a: "NuruIQ is an alerts platform that tracks planned electricity outages and sends real-time updates.",
+  },
+  {
+    q: "How does NuruIQ get its data?",
+    a: "NuruIQ ingests official public outage notices and structures them for area-level tracking.",
+  },
+  {
+    q: "How accurate are alerts?",
+    a: "We optimize for accuracy and speed, but timelines can change when providers update schedules.",
+  },
+  {
+    q: "Does NuruIQ use my location?",
+    a: "Only with your permission. You can also follow regions manually without location access.",
+  },
+  {
+    q: "How do I get support?",
+    a: "Email support@nuruiq.com for product or account support.",
+  },
+] as const;
+
+export default async function Home({ searchParams }: { searchParams?: PageSearchParams | Promise<PageSearchParams> }) {
   const resolvedSearchParams = await resolveSearchParams(searchParams);
   const rawRegion = resolvedSearchParams.region;
   const selectedRegion = (Array.isArray(rawRegion) ? rawRegion[0] : rawRegion)?.trim() || "";
 
   let active: EventItemDto[] = [];
   let upcoming: EventItemDto[] = [];
+
   try {
     const [nowRes, futureRes] = await Promise.all([fetchEventsNow({ limit: 20 }), fetchEvents({ limit: 30, sort: "asc" })]);
+
     const seen = new Set<string>();
     const today = new Date();
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
     active = nowRes.items.filter((it) => {
       if (seen.has(it.id)) return false;
       seen.add(it.id);
       return true;
     });
+
     upcoming = futureRes.items
       .filter((it) => !seen.has(it.id))
       .filter((it) => {
@@ -92,12 +163,11 @@ export default async function Home({
       })
       .slice(0, 20);
   } catch {
-    // Non-blocking; section will show an error state
+    // Non-blocking: UI falls back to an empty state.
   }
-  const cards: AlertCardItem[] = [
-    ...active.map((event) => ({ event, isActive: true, region: getRegionLabel(event) })),
-    ...upcoming.map((event) => ({ event, isActive: false, region: getRegionLabel(event) })),
-  ];
+
+  const cards: AlertCardItem[] = [...active.map((event) => ({ event, isActive: true, region: getRegionLabel(event) })), ...upcoming.map((event) => ({ event, isActive: false, region: getRegionLabel(event) }))];
+
   const regionSummaries = Array.from(
     cards.reduce((acc, item) => {
       const existing = acc.get(item.region);
@@ -121,369 +191,316 @@ export default async function Home({
   const allRegionsActive = cards.filter((item) => item.isActive).length;
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 antialiased dark:bg-black dark:text-zinc-50">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-white/60 backdrop-blur supports-backdrop-filter:bg-white/60 dark:bg-black/40">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <a href="#" className="flex items-center gap-2">
-            <img src="/logo.svg" alt="NuruIQ logo" className="brand-mark" />
-            <span className="text-xl font-semibold tracking-tight">NuruIQ</span>
-          </a>
-          <nav className="hidden gap-6 text-sm text-zinc-600 dark:text-zinc-300 sm:flex">
-            <a href="#features" className="hover:text-zinc-900 dark:hover:text-white">
-              Features
-            </a>
-            <a href="#screens" className="hover:text-zinc-900 dark:hover:text-white">
-              Screens
-            </a>
-            <a href="#how" className="hover:text-zinc-900 dark:hover:text-white">
-              How It Works
-            </a>
-            <a href="#faq" className="hover:text-zinc-900 dark:hover:text-white">
-              FAQ
-            </a>
-            <a href="#download" className="hover:text-zinc-900 dark:hover:text-white">
-              Download
-            </a>
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur supports-backdrop-filter:bg-background/70">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="/logo.svg" alt="NuruIQ" width={28} height={28} priority className="brand-mark" />
+            <span className="text-lg font-semibold tracking-tight">NuruIQ</span>
+          </Link>
+
+          <nav className="hidden items-center gap-1 md:flex">
+            <Button asChild variant="ghost" size="sm">
+              <Link href="#alerts">Live Alerts</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="#features">Features</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="#faq">FAQ</Link>
+            </Button>
           </nav>
-          <a
-            href="#download"
-            className="inline-flex items-center justify-center rounded-full bg-linear-to-tr from-emerald-500 to-teal-400 px-4 py-2 text-sm font-medium text-white shadow-sm ring-1 ring-inset ring-emerald-600/20 transition hover:brightness-110"
-          >
-            Download APK
-          </a>
+
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button asChild size="sm" className="hidden sm:inline-flex">
+              <a href="https://play.google.com/store/apps/details?id=com.power_watch.nuruiq&pcampaignid=web_share" target="_blank" rel="noopener noreferrer">
+                Download APK
+              </a>
+            </Button>
+          </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        {/* Background grid + blobs */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute inset-0 bg-grid opacity-40 dark:opacity-20 mask-radial" />
-          <div className="absolute -top-24 -left-24 h-112 w-md rounded-full bg-emerald-400/30 blur-3xl" />
-          <div className="absolute -bottom-24 -right-24 h-128 w-lg rounded-full bg-teal-400/20 blur-3xl" />
-        </div>
-        <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 py-20 md:grid-cols-2 md:py-28">
-          <div>
-            <div className="mb-3">
-              <img src="/logo.svg" alt="NuruIQ logo" className="brand-mark-hero drop-shadow-sm" />
-            </div>
-            <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">NuruIQ. <br />  Never Miss a Power Update.</h1>
-            <p className="mt-5 max-w-xl text-lg text-zinc-600 dark:text-zinc-400">Real-time KPLC outages, updates and smart notifications - all in one lightweight app.</p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <a href="#download" className="rounded-full bg-linear-to-tr from-emerald-500 to-teal-400 px-5 py-3 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-emerald-600/20 transition hover:brightness-110">
-                Download APK
-              </a>
-              <a
-                href="#features"
-                className="rounded-full border border-zinc-300 bg-white/70 px-5 py-3 text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-white dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-50 dark:hover:bg-zinc-900"
-              >
-                Learn More
-              </a>
-            </div>
-            <div className="mt-6 text-xs text-zinc-500 dark:text-zinc-400">Android only for now. iOS coming soon.</div>
+      <main>
+        <section className="relative overflow-hidden border-b">
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+            <div className="absolute inset-0 bg-grid opacity-40 mask-radial" />
+            <div className="absolute -left-28 -top-16 h-72 w-72 rounded-full bg-primary/20 blur-3xl" />
+            <div className="absolute -bottom-24 right-0 h-72 w-72 rounded-full bg-sky-500/20 blur-3xl" />
           </div>
-          <div className="relative mx-auto">
-            <div className="pointer-events-none absolute inset-0 -z-10 rounded-[28px] bg-white/60 shadow-2xl ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-950/60 dark:ring-white/10" />
-            <div className="rounded-[28px] bg-white p-2 shadow-xl ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-950 dark:ring-white/10">
-              <div className="h-[450px] overflow-hidden rounded-[22px] ring-1 ring-inset ring-zinc-900/10 dark:ring-white/10">
-                <Image src="/screens/screen-0.jpg" alt="App screen" width={300} height={400} className="h-full w-auto" priority />
+
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-[1.05fr_0.95fr] md:py-24">
+            <div className="space-y-6">
+              <div className="mb-3">
+                <img src="/logo.svg" alt="NuruIQ logo" className="brand-mark-hero drop-shadow-sm" />
               </div>
+              <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">Planned Outage Alerts, Organized by Region.</h1>
+              <p className="max-w-2xl text-base text-muted-foreground sm:text-lg">NuruIQ gives you area-level outage visibility with clear schedules, active status, and places affected.</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button asChild size="lg">
+                  <a href="https://play.google.com/store/apps/details?id=com.power_watch.nuruiq&pcampaignid=web_share" target="_blank" rel="noopener noreferrer">
+                    Download APK
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
+                <Button asChild variant="outline" size="lg">
+                  <Link href="#alerts">See Live Alerts</Link>
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Android available now. iOS support is coming soon.</p>
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Live Alerts */}
-      <section id="alerts" className="relative py-16 sm:py-20">
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute inset-0 bg-grid opacity-30 dark:opacity-15" />
-        </div>
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-8">
+            <Card className="overflow-hidden p-2">
+              <div className="overflow-hidden rounded-lg border bg-card">
+                <Image src="/screens/screen-0.jpg" alt="NuruIQ app home screen" width={720} height={1100} className="h-[500px] w-full object-cover object-top" priority />
+              </div>
+            </Card>
+          </div>
+        </section>
+
+        <section id="alerts" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Live Alerts</h2>
-              <p className="mt-2 max-w-2xl text-zinc-600 dark:text-zinc-400">Planned outages by region. Select a category to view outage cards.</p>
+              <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Live Alerts</h2>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">Planned outages by region. Select a category to view outage cards.</p>
             </div>
+            <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
+              Auto-refreshed every minute
+            </Badge>
           </div>
 
-          <div className="mb-6 rounded-2xl bg-white/70 p-4 shadow-sm ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-900/40 dark:ring-white/10">
-            <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Regions</div>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/#alerts"
+          <Card className="mb-5 gap-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Regions</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2 pb-6">
+              <Button
+                asChild
+                size="sm"
                 className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                   !activeRegion
                     ? "bg-emerald-500 text-white shadow-sm ring-1 ring-inset ring-emerald-600/40"
                     : "bg-zinc-100 text-zinc-700 ring-1 ring-inset ring-zinc-300 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700 dark:hover:bg-zinc-700"
                 }`}
               >
-                <span>All regions</span>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] ${!activeRegion ? "bg-white/20" : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200"}`}>{allRegionsTotal}</span>
-                {allRegionsActive > 0 && (
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] ${!activeRegion ? "bg-red-500/40" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}`}>{allRegionsActive} active</span>
-                )}
-              </Link>
+                <Link href="/#alerts" scroll>
+                  All regions
+                  <Badge className={`rounded-full border-0 px-2 py-0.5 text-[10px] ${!activeRegion ? "bg-white/20" : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200"}`}>{allRegionsTotal}</Badge>
+                  {allRegionsActive > 0 ? (
+                    <Badge variant="destructive" className={`rounded-full border-0 px-2 py-0.5 text-[10px] ${!activeRegion ? "bg-red-500/40" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}`}>
+                      {allRegionsActive} active
+                    </Badge>
+                  ) : null}
+                </Link>
+              </Button>
+
               {regionSummaries.map((region) => {
                 const isSelected = activeRegion === region.name;
                 return (
-                  <Link
+                  <Button
                     key={region.name}
-                    href={`/?region=${encodeURIComponent(region.name)}#alerts`}
+                    asChild
+                    size="sm"
                     className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                       isSelected
                         ? "bg-emerald-500 text-white shadow-sm ring-1 ring-inset ring-emerald-600/40"
                         : "bg-zinc-100 text-zinc-700 ring-1 ring-inset ring-zinc-300 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700 dark:hover:bg-zinc-700"
                     }`}
                   >
-                    <span>{region.name}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] ${isSelected ? "bg-white/20" : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200"}`}>{region.total}</span>
-                    {region.active > 0 && (
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] ${isSelected ? "bg-red-500/40" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}`}>
-                        {region.active} active
-                      </span>
-                    )}
-                  </Link>
+                    <Link href={`/?region=${encodeURIComponent(region.name)}#alerts`} scroll>
+                      {region.name}
+                      <Badge className={`rounded-full border-0 px-2 py-0.5 text-[10px] ${isSelected ? "bg-white/20" : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200"}`}>{region.total}</Badge>
+                      {region.active > 0 ? (
+                        <Badge className={`rounded-full border-0 px-2 py-0.5 text-[10px] ${isSelected ? "bg-red-500/40" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}`}>{region.active} active</Badge>
+                      ) : null}
+                    </Link>
+                  </Button>
                 );
               })}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {visibleCards.length === 0 ? (
-            <div className="rounded-2xl bg-white/70 p-6 text-sm text-zinc-600 shadow-sm ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-900/40 dark:text-zinc-400 dark:ring-white/10">
-              No outages found for this region.
-            </div>
+            <Card className="border-dashed">
+              <CardContent className="py-10">
+                <p className="text-sm text-muted-foreground">No outages found for this region.</p>
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {visibleCards.map((item) => {
                 const evt = item.event;
                 return (
-                  <article
-                    key={`${evt.id}-${item.isActive ? "active" : "upcoming"}`}
-                    className={`overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-inset dark:bg-zinc-900/40 ${
-                      item.isActive ? "ring-red-300 dark:ring-red-700/60" : "ring-zinc-900/5 dark:ring-white/10"
-                    }`}
-                  >
-                    <div className={`flex items-center justify-between gap-3 px-4 py-3 ${item.isActive ? "bg-red-600 text-white" : "bg-sky-500/15 text-sky-900 dark:bg-sky-500/20 dark:text-sky-200"}`}>
+                  <Card key={evt.id} className={`overflow-hidden gap-0 rounded-2xl bg-white shadow-sm ring-1 ring-inset dark:bg-zinc-900/40 ${item.isActive ? "ring-red-300 dark:ring-red-700/60 shadow-red-300 dark:shadow-red-700/60" : "ring-zinc-900/5 dark:ring-white/10"}`}>
+                    <div className={item.isActive ? "flex items-center justify-between gap-3 border-b bg-destructive px-5 py-3 text-destructive-foreground" : "flex items-center justify-between gap-3 border-b bg-secondary px-5 py-3"}>
                       <div className="min-w-0">
-                        <h3 className="truncate text-sm font-semibold">{evt.area?.trim() || formatLocation(evt) || "Unknown area"}</h3>
-                        <p className={`truncate text-xs ${item.isActive ? "text-red-100" : "text-sky-800 dark:text-sky-300"}`}>{item.region}</p>
+                        <p className="truncate text-sm font-semibold">{evt.area?.trim() || formatLocation(evt) || "Unknown area"}</p>
+                        <p className={item.isActive ? "truncate text-xs text-destructive-foreground/85" : "truncate text-xs text-muted-foreground"}>{item.region}</p>
                       </div>
                       {item.isActive ? (
-                        <span className="inline-flex shrink-0 items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ring-white/30">
+                        <Badge variant="secondary" className="bg-white/15 text-white">
                           Active outage
-                        </span>
+                        </Badge>
                       ) : (
-                        <span className="inline-flex shrink-0 items-center rounded-full bg-white/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800 ring-1 ring-inset ring-sky-600/20 dark:bg-sky-900/40 dark:text-sky-200 dark:ring-sky-400/30">
-                          Upcoming
-                        </span>
+                        <Badge variant="outline">Upcoming</Badge>
                       )}
                     </div>
-                    <div className="space-y-3 px-4 py-4 text-sm">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Date</p>
-                        <p className="mt-1 text-zinc-800 dark:text-zinc-100">{evt.date_local || "Not provided"}</p>
+
+                    <CardContent className="space-y-4 px-5 py-5 text-sm">
+                      <div className="flex gap-3">
+                        <CalendarDays className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Date</p>
+                          <p>{evt.date_local || "Not provided"}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Time</p>
-                        <p className="mt-1 text-zinc-800 dark:text-zinc-100">{formatWindow(evt)}</p>
+                      <div className="flex gap-3">
+                        <Clock3 className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Time</p>
+                          <p>{formatWindow(evt)}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Places</p>
-                        <p className="mt-1 text-zinc-700 dark:text-zinc-300">{formatPlaces(evt)}</p>
+                      <div className="flex gap-3">
+                        <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Places</p>
+                          <p className="text-muted-foreground">{formatPlaces(evt)}</p>
+                        </div>
                       </div>
-                    </div>
-                  </article>
+                    </CardContent>
+                  </Card>
                 );
               })}
             </div>
           )}
-          <div className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">Feed includes official planned notices; user reports appear in-app.</div>
-        </div>
-      </section>
-      {/* Features */}
-      <section id="features" className="border-y border-zinc-200 bg-white py-16 dark:border-zinc-800 dark:bg-black sm:py-20">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-10 max-w-2xl">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Features that matter</h2>
-            <p className="mt-3 text-zinc-600 dark:text-zinc-400">Built to be reliable, simple, and fast - so you always know what&apos;s happening.</p>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              { title: "Realtime alerts", desc: "Get notified about outages and restorations as they happen.", icon: "/globe.svg" },
-              { title: "Regional coverage", desc: "Track areas that matter to you with location-driven feeds.", icon: "/window.svg" },
-              { title: "Smart summaries", desc: "Digest daily highlights so you never miss key updates.", icon: "/file.svg" },
-              { title: "Light + Dark", desc: "Looks great in both light and dark themes.", icon: "/window.svg" },
-              { title: "Privacy first", desc: "Your data stays on device. No surprise tracking.", icon: "/file.svg" },
-              { title: "Fast & lightweight", desc: "Low data usage with a smooth experience.", icon: "/globe.svg" },
-            ].map((f) => (
-              <div key={f.title} className="rounded-2xl bg-white/70 p-6 shadow-sm ring-1 ring-inset ring-zinc-900/5 transition hover:shadow-md dark:bg-zinc-900/40 dark:ring-white/10">
-                <div className="flex items-start gap-4">
-                  <span className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-linear-to-tr from-emerald-500/20 to-teal-400/20 ring-1 ring-inset ring-emerald-600/20">
-                    <Image src={f.icon} alt="" width={20} height={20} className="dark:invert" />
-                  </span>
-                  <div>
-                    <h3 className="text-base font-semibold">{f.title}</h3>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{f.desc}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Screens */}
-      <section id="screens" className="relative py-16 sm:py-20">
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute inset-0 bg-grid opacity-30 dark:opacity-15" />
-        </div>
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-8 flex items-end justify-between">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">A peek at the app</h2>
-              <p className="mt-2 max-w-2xl text-zinc-600 dark:text-zinc-400">Clean, focused screens that highlight the essentials.</p>
-            </div>
+          <p className="mt-4 text-xs text-muted-foreground">Feed includes official planned notices. User reports appear in-app.</p>
+        </section>
+
+        <Separator />
+
+        <section id="features" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16">
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Built with practical tools</h2>
+            <p className="mt-2 text-sm text-muted-foreground sm:text-base">Purpose-built for reliability, clarity, and fast decision making.</p>
           </div>
-          <div className="overflow-x-auto">
-            <div className="flex gap-6">
-              {["/screens/screen-1.jpg", "/screens/screen-2.jpg", "/screens/screen-3.jpg", "/screens/screen-4.jpg"].map((src) => (
-                <div key={src} className="relative w-[260px] shrink-0">
-                  <div className="rounded-[22px] bg-white p-2 shadow-md ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-950 dark:ring-white/10">
-                    <div className="overflow-hidden rounded-[18px] ring-1 ring-inset ring-zinc-900/10 dark:ring-white/10">
-                      <Image src={src} alt="App screen" width={600} height={1200} />
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {featureItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Card key={item.title} className="gap-0">
+                  <CardHeader className="pb-2">
+                    <div className="mb-1 flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Icon className="h-4 w-4" />
                     </div>
-                  </div>
+                    <CardTitle className="text-base">{item.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-6">
+                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+
+        <Separator />
+
+        <section id="screens" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16">
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">In-app preview</h2>
+            <p className="mt-2 text-sm text-muted-foreground sm:text-base">Focused screens built for quick scanning and alert triage.</p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {["/screens/screen-1.jpg", "/screens/screen-2.jpg", "/screens/screen-3.jpg", "/screens/screen-4.jpg"].map((src) => (
+              <Card key={src} className="overflow-hidden p-2">
+                <div className="overflow-hidden rounded-lg border">
+                  <Image src={src} alt="NuruIQ app screen" width={600} height={1200} className="h-[360px] w-full object-cover object-top" />
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section id="how" className="border-y border-zinc-200 bg-white py-16 dark:border-zinc-800 dark:bg-black sm:py-20">
-        <div className="mx-auto max-w-7xl px-6">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">How it works</h2>
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { step: "1", title: "Install", desc: "Get the APK and install on Android." },
-              { step: "2", title: "Setup", desc: "Choose your region and notification prefs." },
-              { step: "3", title: "Stay updated", desc: "Receive outage alerts and daily summaries." },
-              { step: "4", title: "Control", desc: "Pause alerts anytime. Your data stays yours." },
-            ].map((s) => (
-              <div key={s.step} className="rounded-2xl bg-white/70 p-6 shadow-sm ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-900/40 dark:ring-white/10">
-                <div className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Step {s.step}</div>
-                <h3 className="mt-2 text-lg font-semibold">{s.title}</h3>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{s.desc}</p>
-              </div>
+              </Card>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* FAQ */}
-      <section id="faq" className="border-y border-zinc-200 bg-white py-16 dark:border-zinc-800 dark:bg-black sm:py-20">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-10 max-w-2xl">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">FAQs</h2>
-            <p className="mt-3 text-zinc-600 dark:text-zinc-400">Quick answers to common questions.</p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            {[
-              {
-                q: "What is NuruIQ?",
-                a: "NuruIQ is an AI-powered alerts platform providing real-time notifications about power outages, weather changes, and more.",
-              },
-              {
-                q: "How does NuruIQ get its data?",
-                a: "We aggregate and verify info from official public sources (like KPLC), processed through AI.",
-              },
-              {
-                q: "How accurate are alerts?",
-                a: "We aim for high accuracy, but some external factors may affect data timeliness.",
-              },
-              {
-                q: "Is NuruIQ available outside Kenya?",
-                a: "Currently serving Kenya, with expansion across East Africa.",
-              },
-              {
-                q: "How do I subscribe?",
-                a: "Enter your phone/email, choose region and alert type. You can unsubscribe anytime.",
-              },
-              {
-                q: "Does NuruIQ use my location?",
-                a: "Only with permission. We never sell or share your data.",
-              },
-              {
-                q: "Support?",
-                a: "Email: support@nuruiq.com",
-              },
-            ].map((item) => (
-              <div key={item.q} className="rounded-2xl bg-white/70 p-6 shadow-sm ring-1 ring-inset ring-zinc-900/5 dark:bg-zinc-900/40 dark:ring-white/10">
-                <h3 className="text-base font-semibold">{item.q}</h3>
-                {item.q === "Support?" ? (
-                  <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                    Email:{" "}
-                    <a className="underline decoration-dotted underline-offset-4 hover:text-zinc-900 dark:hover:text-zinc-200" href="mailto:support@nuruiq.com">
-                      support@nuruiq.com
-                    </a>
-                  </p>
-                ) : (
-                  <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{item.a}</p>
-                )}
-              </div>
+        <Separator />
+
+        <section id="how" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16">
+          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">How it works</h2>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {workflow.map((item) => (
+              <Card key={item.step} className="gap-0">
+                <CardHeader className="pb-2">
+                  <Badge variant="outline" className="w-fit rounded-full">
+                    Step {item.step}
+                  </Badge>
+                  <CardTitle className="text-base">{item.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="pb-6">
+                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Download */}
-      <section id="download" className="py-16 sm:py-20">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="grid items-center gap-10 md:grid-cols-[1.2fr_0.8fr]">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Download the APK</h2>
-              <p className="mt-3 max-w-xl text-zinc-600 dark:text-zinc-400">Ready to try it? Install the Android APK directly. We&apos;ll publish to the Play Store soon.</p>
-              <div className="mt-6 flex flex-wrap items-center gap-4">
-                <a
-                  href="#"
-                  aria-disabled
-                  className="cursor-not-allowed rounded-lg bg-linear-to-tr from-emerald-500 to-teal-400 px-5 py-3 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-emerald-600/20"
-                  title="APK link coming soon"
-                >
-                  Download APK (Coming Soon)
-                </a>
-                <a href="#features" className="rounded-lg border border-zinc-300 bg-white/70 px-5 py-3 text-sm font-semibold shadow-sm hover:bg-white dark:border-zinc-700 dark:bg-zinc-900/40 dark:hover:bg-zinc-900">
-                  Explore Features
-                </a>
-              </div>
-              <div className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">Checksum and version details will appear here once available.</div>
-            </div>
-            {/* <div className="mx-auto w-full max-w-xs">
-              <div className="rounded-2xl p-6 text-center shadow-sm ring-1 ring-inset ring-zinc-900/10 dark:ring-white/10">
-                <Image src="/qr.svg" alt="QR code placeholder" width={180} height={180} className="mx-auto" />
-                <div className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">Scan on your phone</div>
-              </div>
-            </div> */}
-          </div>
-        </div>
-      </section>
+        <Separator />
 
-      {/* Footer */}
-      <footer className="border-t border-zinc-200 py-10 text-sm text-zinc-500 dark:border-zinc-800">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6">
-          <div>(c) {new Date().getFullYear()} NuruIQ. All rights reserved.</div>
-          <div className="flex gap-5">
-            <Link href="/privacy" className="hover:text-zinc-700 dark:hover:text-zinc-300">
+        <section id="faq" className="mx-auto max-w-4xl px-4 py-14 sm:px-6 sm:py-16">
+          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">FAQ</h2>
+          <Card className="mt-6">
+            <CardContent className="pt-2">
+              <Accordion type="single" collapsible>
+                {faqItems.map((item) => (
+                  <AccordionItem key={item.q} value={item.q}>
+                    <AccordionTrigger>{item.q}</AccordionTrigger>
+                    <AccordionContent>{item.a}</AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </CardContent>
+          </Card>
+        </section>
+
+        <Separator />
+
+        <section id="download" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16">
+          <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 to-background">
+            <CardHeader>
+              <CardTitle className="text-2xl">Download NuruIQ for Android</CardTitle>
+              <CardDescription>Install the APK and start receiving outage alerts organized by the regions you care about.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center gap-3 pb-8">
+              <Button asChild size="lg">
+                <a href="https://play.google.com/store/apps/details?id=com.power_watch.nuruiq&pcampaignid=web_share" target="_blank" rel="noopener noreferrer">
+                  Download APK
+                  <Download className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href="#alerts">View live regions</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
+      </main>
+
+      <footer className="border-t bg-background">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p>(c) {new Date().getFullYear()} NuruIQ. All rights reserved.</p>
+          <div className="flex items-center gap-4">
+            <Link href="/privacy" className="hover:text-foreground">
               Privacy
             </Link>
-            <Link href="/terms" className="hover:text-zinc-700 dark:hover:text-zinc-300">
+            <Link href="/terms" className="hover:text-foreground">
               Terms
             </Link>
-            <Link href="#" className="hover:text-zinc-700 dark:hover:text-zinc-300">
+            <a href="mailto:support@nuruiq.com" className="hover:text-foreground">
               Contact
-            </Link>
+            </a>
           </div>
         </div>
       </footer>

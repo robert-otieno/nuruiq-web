@@ -1,59 +1,103 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Nuruiq",
-  description: "Read Nuruiq's Privacy Policy.",
+  title: "Privacy Policy - NuruIQ",
+  description: "Read NuruIQ privacy policy.",
 };
+
+const sections = [
+  {
+    title: "1. Data We Collect",
+    body: "We may collect account details (name, phone, email), optional location settings, and product usage analytics.",
+  },
+  {
+    title: "2. How We Use Data",
+    body: "Data is used to deliver outage alerts, improve product quality, and provide support communications.",
+  },
+  {
+    title: "3. Cookies and Local Storage",
+    body: "We use local storage and cookies for session continuity, performance, and user preferences.",
+  },
+  {
+    title: "4. Security",
+    body: "We apply technical and administrative controls designed to protect personal data from unauthorized access.",
+  },
+  {
+    title: "5. Data Sharing",
+    body: "Data is only shared with trusted processors or where required by law or regulatory obligations.",
+  },
+  {
+    title: "6. Your Rights",
+    body: "You can request access, correction, or deletion of your personal data by contacting our support team.",
+  },
+  {
+    title: "7. Third-Party Services",
+    body: "External services linked from NuruIQ are governed by their own privacy terms.",
+  },
+] as const;
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 antialiased dark:bg-black dark:text-zinc-50">
-      <section className="relative py-16 sm:py-20">
-        <div className="mx-auto max-w-3xl px-6">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Privacy Policy</h1>
-          <p className="mt-2 text-sm text-zinc-500">Last Updated: November 2025</p>
-
-          <div className="prose prose-zinc mt-8 max-w-none dark:prose-invert">
-            <ol className="space-y-6">
-              <li>
-                <h2 className="text-lg font-semibold">1. Data We Collect</h2>
-                <p>Personal (name, phone, email), location (optional), and usage analytics.</p>
-              </li>
-              <li>
-                <h2 className="text-lg font-semibold">2. Use of Data</h2>
-                <p>To deliver alerts, improve predictions, and notify you of updates.</p>
-              </li>
-              <li>
-                <h2 className="text-lg font-semibold">3. Cookies</h2>
-                <p>We use cookies for performance and UX; disable in browser if preferred.</p>
-              </li>
-              <li>
-                <h2 className="text-lg font-semibold">4. Security</h2>
-                <p>We employ encryption and firewalls to secure data.</p>
-              </li>
-              <li>
-                <h2 className="text-lg font-semibold">5. Sharing Data</h2>
-                <p>Shared only with trusted service providers or when required by law.</p>
-              </li>
-              <li>
-                <h2 className="text-lg font-semibold">6. Your Rights</h2>
-                <p>Request deletion, opt-out, update data.</p>
-              </li>
-              <li>
-                <h2 className="text-lg font-semibold">7. Third-Party Services</h2>
-                <p>Linked sites are not covered by our Privacy Policy.</p>
-              </li>
-              <li>
-                <h2 className="text-lg font-semibold">8. Contact</h2>
-                <p>
-                  Email: <a className="underline" href="mailto:privacy@nuruiq.com">privacy@nuruiq.com</a>
-                </p>
-              </li>
-            </ol>
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4 sm:px-6">
+          <Link href="/" className="text-sm font-semibold tracking-tight">
+            NuruIQ
+          </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button asChild variant="outline" size="sm">
+              <Link href="/">Home</Link>
+            </Button>
           </div>
         </div>
-      </section>
+      </header>
+
+      <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14">
+        <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
+          Legal
+        </Badge>
+        <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Privacy Policy</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Last updated: March 28, 2026</p>
+
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Your privacy at NuruIQ</CardTitle>
+            <CardDescription>
+              This policy explains what data we process and why.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6 pb-8">
+            {sections.map((section, index) => (
+              <div key={section.title}>
+                <h2 className="text-base font-semibold">{section.title}</h2>
+                <p className="mt-2 text-sm text-muted-foreground">{section.body}</p>
+                {index < sections.length - 1 ? <Separator className="mt-5" /> : null}
+              </div>
+            ))}
+
+            <div>
+              <h2 className="text-base font-semibold">8. Contact</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Email: <a className="underline underline-offset-4" href="mailto:privacy@nuruiq.com">privacy@nuruiq.com</a>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 }
-
